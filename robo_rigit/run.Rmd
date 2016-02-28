@@ -1,0 +1,69 @@
+---
+title: "run"
+author: "KUNIYOSHI Kouji"
+date: "2016年2月12日"
+output: html_document
+---
+
+通常移動の速さ曲線
+==================
+
+(100m走におけるスピード曲線の即時的フィードバック効果について)[http://koara.lib.keio.ac.jp/xoonips/modules/xoonips/download.php/AN00135710-00410001-0015.pdf?file_id=61092]
+
+```{r setup, include = FALSE}
+library(knitr)
+library(pander)
+panderOptions("round", 2)
+```
+
+グラフからデータをとります。目測なのでプラスマイナス0.1程度の誤差があると思います。
+
+```{r data, echo = FALSE}
+d <- data.frame(meter = 0:10 * 10,
+                speed = c(0.0, 4.8, 8.0, 8.5, 9.3, 8.8, 8.8, 8.8, 8.5, 8.6, 8.6))
+knitr::kable(d)
+```
+
+```{r timed, echo = FALSE}
+d <- transform(d, time = c(0, cumsum(10 / speed[speed > 0])))
+```
+
+```{r modeling, echo = FALSE}
+m <- glm(speed ~ 0 + poly(time, 3, raw = TRUE), family = gaussian, data = d)
+plot(speed ~ time, d)
+points(x = d$time, y = predict(m, newdata = data.frame(time = d$time)), col = "blue")
+y.c <- coef(m)
+knitr::kable(data.frame(coef = coef(m)))
+```
+
+$y = `r y.c[1]`x + `r y.c[2]`x^2 + `r y.c[3]`x^3$
+
+```{r plot_resid, echo = FALSE}
+z.f <- function(time) y.c[1] * time + y.c[2] * time ^ 2 + y.c[3] * time ^ 3
+curve(z.f, from = 0, to = 13)
+points(speed ~ time, d)
+```
+
+微分して
+
+$y = `r y.c[1]` + `r 2 * y.c[2]`x + `r 3 * y.c[3]`x^2$.
+
+加速度の時間関数を見ると
+
+```{r plot_a, echo = FALSE}
+z.af <- function(t) y.c[1] + 2 * y.c[2] * t + 3 * y.c[3] * t ^ 2
+curve(z.af, from = 0, to = 22)
+zero_at <- -2 * y.c[2] / 6 / y.c[3]
+```
+
+最高速に到達した後は等速直線運動としたいので、加速度の時間微分が0になる点以降は一定にします。
+
+加速度の微分が0になるところは`t = `r zero_at``の時です。
+
+加速度の時間関数は
+
+$a(t) = \{
+\begin{array}{l} `r y.c[1]` + `r 2 * y.c[2]`t + `r 3 * y.c[3]`t^2 (t < `r zero_at`) \\
+0 (t >= `r zero_at`)\end{array}$.
+
+
