@@ -1,0 +1,96 @@
+---
+title: "Fire Missile"
+author: "KUNIYOSHI Kouji"
+date: "2016年3月2日"
+output: html_document
+---
+
+ミサイル発射
+============
+
+ロケットの速度は下式で求めます。
+
+$\vec{V}(t) = \vec{u} \log \frac{M} {M - \alpha t}$
+
+よく聞くRPG-7をモデルにします。爆薬はわからないので適当にNGとします。
+
+RPG-7では初速が`115`[m/s]で、発射から`10`[s]後に爆薬が反応して、最終的には`295`[m/s]です。最高速になるところもわかっていて、500[m]です。質量は`7`[kg]です。
+
+爆薬が反応し始めるときを`0`として、$\alpha t$を計算します。
+
+```{r define, include = FALSE}
+ng_velocity <- 7700
+m <- 7
+```
+
+$\alpha t = \frac{`r m` \exp(\frac{180} {`r ng_velocity`}) - `r m`} {\exp(\frac{180} {`r ng_velocity`})}$
+
+```{r eq, include = FALSE}
+alpha_t <- (m * exp(180/ng_velocity) - m) / exp(180/ng_velocity)
+```
+
+$\alpha t = `r alpha_t`$
+
+最高速と到達点から反応時間を適当に決めます。`2`[s]とします。
+
+```{r eq2, include = FALSE}
+alpha <- alpha_t / 2
+```
+
+$\alpha = `r alpha`[kg/s]$
+
+決めた値で速度の式を表すと、下式になります。一方行で考えることにして、ベクトルは外しました。
+
+$V(t) = \begin{cases} 115 + `r ng_velocity` \log \frac{`r m`} {`r m` - `r alpha` t} & (t < 2) \\ 295 & (t \geq 2) \end{cases}$
+
+時間対速度を下図にプロットします。
+
+```{r f, echo = FALSE}
+f <- function(t) ifelse(t < 2, 115 + ng_velocity * log(m / (m - alpha * t)), 295)
+x <- seq(0, 2.2, .1)
+plot(x = x,
+     y = f(x),
+     xlab = "t[s]",
+     ylab = "V[m/s]")
+```
+
+爆速が速すぎて結局等加速度運動で良さそうです。爆速を`200`[m/s]などにすると曲線になります。
+
+```{r f.200, echo = FALSE}
+alpha.200 <- (m * exp(180/200) - m) / exp(180/200) / 2
+f.200 <- function(t) ifelse(t < 2, 115 + 200 * log(m / (m - alpha.200 * t)), 295)
+x <- seq(0, 2.2, .1)
+plot(x = x,
+     y = f.200(x),
+     xlab = "t[s]",
+     ylab = "V[m/s]")
+```
+
+等加速度運動でモデルし直します。式が簡単になったのでついでに、発射時点を`0`秒とします。
+
+$\vec{V}(t) = \begin{cases} \
+ 115 & (t \leq 10) \\ \
+ 115 + \frac{(295 - 115)} {2} (t - 10) & (t > 10; t \leq 12) \\ \
+ 295 & (t > 12) \
+ \end{cases}$
+
+念のため計算してみます。
+
+```{r f.eq, echo = FALSE}
+f.eq <- function(t) ifelse(t < 10, 115, ifelse(t < 12, 115 + (295 - 115) / 2 * (t - 10), 295))
+x.eq <- c(seq(9, 10, 0.2), x + 10)
+plot(x = x.eq,
+     y = f.eq(x.eq),
+     xlab = "t[s]",
+     ylab = "V[m/s]",
+     pch = 1,
+     col = "blue")
+points(x = x + 10, f(x), pch = 2, col = "darkgreen")
+legend(x = 9,
+       y = 300,
+       legend = c("log", "eq"),
+       pch = 1:2,
+       col = c("blue", "darkgreen"))
+```
+
+計算に$\log$があるものを`log`モデルと名付けました。最後の等加速度は`eq`と名付けました。等加速度モデルで良さそうです。
